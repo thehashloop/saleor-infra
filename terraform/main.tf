@@ -62,11 +62,6 @@ resource "digitalocean_database_firewall" "saleor_db_firewall" {
   }
 }
 
-resource "digitalocean_spaces_bucket" "our-saleor-media" {
-  name   = var.space_name
-  region = var.region
-}
-
 resource "digitalocean_domain" "default" {
   name = var.domain_name
 }
