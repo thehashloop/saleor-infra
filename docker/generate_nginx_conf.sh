@@ -1,12 +1,44 @@
 #!/bin/bash
+set -e
 
-# Load .env variables
-set -a
-source .env
-set +a
+# Check if domain was provided
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <domain>"
+    exit 1
+fi
 
-# Generate nginx.conf from template
-envsubst '${SERVER_NAME}' < nginx.conf.template > nginx.conf
+DOMAIN="$1"
+
+# Load environment variables from .env file if it exists
+if [ -f .env ]; then
+    echo "Loading environment variables from .env file..."
+    export $(grep -v '^#' .env | xargs)
+fi
+
+# Check for required variables
+if [ -z "$AWS_S3_ENDPOINT_URL" ] || [ -z "$AWS_STORAGE_BUCKET_NAME" ] || [ -z "$AWS_S3_CUSTOM_DOMAIN" ]; then
+    echo "Warning: Missing S3/Spaces configuration. Media URLs may not work correctly."
+    # Set defaults to prevent template errors
+    AWS_S3_ENDPOINT_URL=${AWS_S3_ENDPOINT_URL:-"https://example.com"}
+    AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME:-"bucket"}
+    AWS_S3_CUSTOM_DOMAIN=${AWS_S3_CUSTOM_DOMAIN:-"example.com"}
+fi
+
+# Create Nginx configuration from template
+echo "Generating Nginx configuration for domain: $DOMAIN"
+cat nginx.conf.template | \
+    SERVER_NAME="$DOMAIN" \
+    AWS_S3_ENDPOINT_URL="$AWS_S3_ENDPOINT_URL" \
+    AWS_STORAGE_BUCKET_NAME="$AWS_STORAGE_BUCKET_NAME" \
+    AWS_S3_CUSTOM_DOMAIN="$AWS_S3_CUSTOM_DOMAIN" \
+    envsubst '${SERVER_NAME} ${AWS_S3_ENDPOINT_URL} ${AWS_STORAGE_BUCKET_NAME} ${AWS_S3_CUSTOM_DOMAIN}' > nginx.conf
+
+echo "Nginx configuration generated successfully at nginx.conf"
+
+# Ensure the letsencrypt webroot directory exists
+mkdir -p /var/www/letsencrypt/.well-known/acme-challenge
+
+echo "Created Let's Encrypt webroot directory"
 
 
 Set up SSL with Certbot:

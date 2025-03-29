@@ -46,11 +46,17 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
-      - name: Save droplet IP
+      - name: Save outputs
         id: tf_output
         working-directory: terraform
         run: |
           echo "DROPLET_IP=$(terraform output -raw droplet_ip)" >> $GITHUB_ENV
+          echo "DB_HOST=$(terraform output -raw db_host)" >> $GITHUB_ENV
+          echo "DB_PORT=$(terraform output -raw db_port)" >> $GITHUB_ENV
+          echo "DB_USER=$(terraform output -raw db_user)" >> $GITHUB_ENV
+          echo "DB_PASSWORD=$(terraform output -raw db_password)" >> $GITHUB_ENV
+          echo "DB_NAME=$(terraform output -raw db_name)" >> $GITHUB_ENV
+          echo "DO_DATABASE_URL=$(terraform output -raw database_url)" >> $GITHUB_ENV
 
       - name: Install SSH client
         run: sudo apt-get install -y openssh-client
@@ -60,14 +66,32 @@ jobs:
           echo "${{ secrets.SSH_KEY }}" | base64 -d > private_key
           chmod 600 private_key
 
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          DOMAIN_NAME=${{ secrets.DOMAIN_NAME }}
+          DB_HOST=${DB_HOST}
+          DB_PORT=${DB_PORT}
+          DB_USER=${DB_USER}
+          DB_PASSWORD=${DB_PASSWORD}
+          DB_NAME=${DB_NAME}
+          DO_DATABASE_URL=${DO_DATABASE_URL}
+          SECRET_KEY=$(openssl rand -base64 32)
+          SPACES_ACCESS_KEY=${{ secrets.SPACES_ACCESS_KEY }}
+          SPACES_SECRET_KEY=${{ secrets.SPACES_SECRET_KEY }}
+          SPACE_NAME=${{ secrets.SPACE_NAME }}
+          SPACE_REGION=${{ secrets.DO_REGION }}
+          EOF
+
       - name: Copy Setup Files to Droplet
         run: |
           scp -o StrictHostKeyChecking=no -i private_key -r docker/ root@${{ env.DROPLET_IP }}:/root/
+          scp -o StrictHostKeyChecking=no -i private_key .env root@${{ env.DROPLET_IP }}:/root/docker/
 
       - name: Run Setup Script on Droplet
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key root@${{ env.DROPLET_IP }} << EOF
             cd /root/docker
-            chmod +x setup.sh
+            chmod +x setup.sh generate_nginx_conf.sh
             ./setup.sh
           EOF
