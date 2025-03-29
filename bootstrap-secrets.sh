@@ -2,49 +2,64 @@
 
 set -e
 
-# Dynamically get GitHub repo in the format "owner/repo"
+# Validate dependencies
+for cmd in gh doctl jq; do
+  if ! command -v $cmd &> /dev/null; then
+    echo "❌ Missing dependency: $cmd"
+    exit 1
+  fi
+done
+
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null)
-
 if [[ -z "$REPO" ]]; then
-  echo "❌ Failed to determine the GitHub repository. Make sure you're running this from inside a cloned repo directory."
+  echo "❌ Must be inside a cloned GitHub repo directory."
   exit 1
 fi
 
-# Prompt for secrets
-read -p "Enter your DigitalOcean Token (DO_TOKEN): " DO_TOKEN
-read -p "Enter your SSH key fingerprint (SSH_KEY_FINGERPRINT): " SSH_KEY_FINGERPRINT
-read -p "Enter your domain (DOMAIN_NAME): " DOMAIN_NAME
-read -p "Enter your DigitalOcean Space name (SPACE_NAME): " SPACE_NAME
-read -p "Enter your Space region (SPACE_REGION, e.g., nyc3): " SPACE_REGION
-read -p "Enter your DigitalOcean region (DO_REGION, e.g., nyc3): " DO_REGION
+# Get required input
+read -p "Enter your domain name (e.g., example.com): " DOMAIN_NAME
+read -p "Enter region (e.g., nyc3): " REGION
 
-echo "📥 Reading private SSH key from ~/.ssh/id_rsa..."
-if [[ ! -f ~/.ssh/id_rsa ]]; then
-  echo "❌ SSH private key not found at ~/.ssh/id_rsa"
-  exit 1
-fi
-SSH_KEY=$(cat ~/.ssh/id_rsa | base64 | tr -d '\n')
-
-# Check for GH CLI
-if ! command -v gh &> /dev/null; then
-  echo "❌ GitHub CLI (gh) not found. Please install it first: https://cli.github.com/"
-  exit 1
+# Generate SSH key
+KEY_NAME="saleor-key"
+KEY_PATH="$HOME/.ssh/saleor_id_rsa"
+if [[ ! -f "$KEY_PATH" ]]; then
+  echo "🔐 Generating SSH key..."
+  ssh-keygen -t rsa -b 4096 -f "$KEY_PATH" -N "" -C "saleor@infra"
 fi
 
-# Ensure user is authenticated
-if ! gh auth status &> /dev/null; then
-  echo "🔐 You must authenticate GH CLI before running this script."
-  gh auth login
-fi
+PUB_KEY=$(cat "$KEY_PATH.pub")
 
-echo "🚀 Setting secrets in GitHub repo: $REPO"
+# Upload SSH public key to DigitalOcean
+echo "🌐 Uploading SSH key to DigitalOcean..."
+KEY_ID=$(doctl compute ssh-key import "$KEY_NAME" --public-key "$PUB_KEY" --output json | jq -r '.[0].id')
 
-gh secret set DO_TOKEN --repo "$REPO" --body "$DO_TOKEN"
-gh secret set SSH_KEY --repo "$REPO" --body "$SSH_KEY"
-gh secret set SSH_KEY_FINGERPRINT --repo "$REPO" --body "$SSH_KEY_FINGERPRINT"
+# Get fingerprint
+FINGERPRINT=$(ssh-keygen -lf "$KEY_PATH.pub" | awk '{print $2}')
+
+# Generate Spaces key
+echo "📦 Generating Spaces access keys..."
+SPACES_KEYS=$(doctl iam oauth-token | jq -r .access_token | \
+  xargs -I{} curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer {}" \
+    -d '{"name": "saleor-spaces-key"}' \
+    https://api.digitalocean.com/v2/account/keys)
+
+ACCESS_KEY=$(echo $SPACES_KEYS | jq -r '.key.access_key')
+SECRET_KEY=$(echo $SPACES_KEYS | jq -r '.key.secret_key')
+
+# Base64 encode private key
+SSH_KEY_BASE64=$(base64 "$KEY_PATH" | tr -d '\n')
+
+# Set secrets in GitHub
+echo "🚀 Pushing secrets to GitHub repo: $REPO"
+gh secret set DO_REGION --repo "$REPO" --body "$REGION"
+gh secret set SPACE_REGION --repo "$REPO" --body "$REGION"
 gh secret set DOMAIN_NAME --repo "$REPO" --body "$DOMAIN_NAME"
-gh secret set SPACE_NAME --repo "$REPO" --body "$SPACE_NAME"
-gh secret set SPACE_REGION --repo "$REPO" --body "$SPACE_REGION"
-gh secret set DO_REGION --repo "$REPO" --body "$DO_REGION"
+gh secret set SSH_KEY --repo "$REPO" --body "$SSH_KEY_BASE64"
+gh secret set SSH_KEY_FINGERPRINT --repo "$REPO" --body "$FINGERPRINT"
+gh secret set SPACES_ACCESS_KEY --repo "$REPO" --body "$ACCESS_KEY"
+gh secret set SPACES_SECRET_KEY --repo "$REPO" --body "$SECRET_KEY"
 
-echo "✅ All secrets set successfully in $REPO"
+echo "✅ Bootstrap complete! All secrets set and ready for deployment."
