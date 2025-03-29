@@ -49,7 +49,7 @@ resource "digitalocean_database_firewall" "saleor_db_firewall" {
   }
 }
 
-resource "digitalocean_spaces_bucket" "saleor_media" {
+resource "digitalocean_spaces_bucket" "saleor_medias" {
   name   = var.space_name
   region = var.region
 }
