@@ -1,0 +1,7 @@
+do_token = "your_digitalocean_token"
+ssh_key_fingerprint = "your_fingerprint"
+domain_name = "yourdomain.com"
+region = "nyc3"
+droplet_size = "s-1vcpu-2gb"
+db_size = "db-s-1vcpu-1gb"
+space_name = "your-space-name"

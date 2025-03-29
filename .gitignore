@@ -1,0 +1,6 @@
+.env
+nginx.conf
+*.tfstate
+*.tfstate.backup
+.terraform/
+private_key
