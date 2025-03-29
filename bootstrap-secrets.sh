@@ -2,7 +2,7 @@
 
 set -e
 
-# Validate dependencies
+# Check dependencies
 for cmd in gh doctl jq; do
   if ! command -v $cmd &> /dev/null; then
     echo "❌ Missing dependency: $cmd"
@@ -16,11 +16,10 @@ if [[ -z "$REPO" ]]; then
   exit 1
 fi
 
-# Get required input
 read -p "Enter your domain name (e.g., example.com): " DOMAIN_NAME
 read -p "Enter region (e.g., nyc3): " REGION
 
-# Generate SSH key
+# Generate SSH Key
 KEY_NAME="saleor-key"
 KEY_PATH="$HOME/.ssh/saleor_id_rsa"
 if [[ ! -f "$KEY_PATH" ]]; then
@@ -30,29 +29,21 @@ fi
 
 PUB_KEY=$(cat "$KEY_PATH.pub")
 
-# Upload SSH public key to DigitalOcean
+# Upload SSH Key to DO
 echo "🌐 Uploading SSH key to DigitalOcean..."
-KEY_ID=$(doctl compute ssh-key import "$KEY_NAME" --public-key "$PUB_KEY" --output json | jq -r '.[0].id')
+echo "$PUB_KEY" > /tmp/temp-key.pub
+KEY_ID=$(doctl compute ssh-key import "$KEY_NAME" --public-key-file /tmp/temp-key.pub --output json | jq -r '.[0].id')
+rm /tmp/temp-key.pub
 
-# Get fingerprint
+# Get SSH fingerprint
 FINGERPRINT=$(ssh-keygen -lf "$KEY_PATH.pub" | awk '{print $2}')
-
-# Generate Spaces key
-echo "📦 Generating Spaces access keys..."
-SPACES_KEYS=$(doctl iam oauth-token | jq -r .access_token | \
-  xargs -I{} curl -s -X POST \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer {}" \
-    -d '{"name": "saleor-spaces-key"}' \
-    https://api.digitalocean.com/v2/account/keys)
-
-ACCESS_KEY=$(echo $SPACES_KEYS | jq -r '.key.access_key')
-SECRET_KEY=$(echo $SPACES_KEYS | jq -r '.key.secret_key')
-
-# Base64 encode private key
 SSH_KEY_BASE64=$(base64 "$KEY_PATH" | tr -d '\n')
 
-# Set secrets in GitHub
+# Prompt manually for Spaces keys (or fetch via DigitalOcean API if desired)
+read -p "Enter your DigitalOcean Spaces Access Key: " ACCESS_KEY
+read -p "Enter your DigitalOcean Spaces Secret Key: " SECRET_KEY
+
+# Set GitHub Secrets
 echo "🚀 Pushing secrets to GitHub repo: $REPO"
 gh secret set DO_REGION --repo "$REPO" --body "$REGION"
 gh secret set SPACE_REGION --repo "$REPO" --body "$REGION"
@@ -62,4 +53,4 @@ gh secret set SSH_KEY_FINGERPRINT --repo "$REPO" --body "$FINGERPRINT"
 gh secret set SPACES_ACCESS_KEY --repo "$REPO" --body "$ACCESS_KEY"
 gh secret set SPACES_SECRET_KEY --repo "$REPO" --body "$SECRET_KEY"
 
-echo "✅ Bootstrap complete! All secrets set and ready for deployment."
+echo "✅ Bootstrap complete!"
