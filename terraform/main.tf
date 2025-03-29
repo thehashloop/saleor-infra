@@ -11,45 +11,6 @@ provider "digitalocean" {
   token = var.do_token
 }
 
-variable "do_token" {
-  description = "DigitalOcean API token"
-  type        = string
-  sensitive   = true
-}
-
-variable "ssh_key_fingerprint" {
-  description = "Fingerprint of the SSH key"
-  type        = string
-}
-
-variable "domain_name" {
-  description = "Domain name"
-  type        = string
-}
-
-variable "region" {
-  description = "DigitalOcean region"
-  type        = string
-  default     = "nyc3"
-}
-
-variable "droplet_size" {
-  description = "Size of the droplet"
-  type        = string
-  default     = "s-1vcpu-2gb"
-}
-
-variable "db_size" {
-  description = "Size of the database cluster"
-  type        = string
-  default     = "db-s-1vcpu-1gb"
-}
-
-variable "space_name" {
-  description = "Name of the Space"
-  type        = string
-}
-
 resource "digitalocean_droplet" "saleor" {
   image  = "ubuntu-20-04-x64"
   name   = "saleor-droplet"
