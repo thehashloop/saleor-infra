@@ -11,10 +11,10 @@ output "database_connection_string" {
 
 output "space_name" {
   description = "DigitalOcean Space used for storing media"
-  value       = digitalocean_spaces_bucket.saleor_media.name
+  value       = digitalocean_spaces_bucket.saleor_medias.name
 }
 
 output "space_region" {
   description = "Region of the DigitalOcean Space"
-  value       = digitalocean_spaces_bucket.saleor_media.region
+  value       = digitalocean_spaces_bucket.saleor_medias.region
 }
