@@ -1,4 +1,13 @@
 terraform {
+  backend "s3" {
+    endpoint                    = "https://blr1.digitaloceanspaces.com"
+    bucket                      = "our-terraform-state"
+    key                         = "terraform.tfstate"
+    region                      = "us-east-1"  # Required but ignored for DigitalOcean
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+  }
+  
   required_providers {
     digitalocean = {
       source = "digitalocean/digitalocean"

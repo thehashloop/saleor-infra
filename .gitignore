@@ -4,3 +4,4 @@ nginx.conf
 *.tfstate.backup
 .terraform/
 private_key
+terraform.tfstate*
