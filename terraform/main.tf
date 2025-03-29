@@ -9,6 +9,8 @@ terraform {
 
 provider "digitalocean" {
   token = var.do_token
+  spaces_access_id  = var.spaces_access_key
+  spaces_secret_key = var.spaces_secret_key
 }
 
 resource "digitalocean_droplet" "saleor" {
@@ -16,7 +18,7 @@ resource "digitalocean_droplet" "saleor" {
   name   = "saleor-droplet"
   region = var.region
   size   = var.droplet_size
-  ssh_keys = [var.ssh_key_fingerprint]
+  ssh_keys = [var.ssh_key_id]
 }
 
 resource "digitalocean_database_cluster" "saleor_db" {

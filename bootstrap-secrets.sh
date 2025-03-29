@@ -56,5 +56,7 @@ gh secret set SSH_KEY --repo "$REPO" --body "$SSH_KEY_BASE64"
 gh secret set SSH_KEY_FINGERPRINT --repo "$REPO" --body "$FINGERPRINT"
 gh secret set SPACES_ACCESS_KEY --repo "$REPO" --body "$ACCESS_KEY"
 gh secret set SPACES_SECRET_KEY --repo "$REPO" --body "$SECRET_KEY"
+gh secret set SSH_KEY_ID --repo "$REPO" --body "$KEY_ID"
+
 
 echo "✅ Bootstrap complete and all secrets set for repo: $REPO"
