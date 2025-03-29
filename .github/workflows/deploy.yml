@@ -60,13 +60,6 @@ jobs:
           echo "${{ secrets.SSH_KEY }}" | base64 -d > private_key
           chmod 600 private_key
 
-      - name: Check and Import Existing Bucket
-        working-directory: terraform
-        run: |
-          BUCKET_NAME=${{ secrets.SPACE_NAME }}
-          terraform state list | grep "digitalocean_spaces_bucket.our-saleor-media" || \
-          terraform import digitalocean_spaces_bucket.our-saleor-media $BUCKET_NAME
-
       - name: Copy Setup Files to Droplet
         run: |
           scp -o StrictHostKeyChecking=no -i private_key -r docker/ root@${{ env.DROPLET_IP }}:/root/
