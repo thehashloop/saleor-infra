@@ -62,7 +62,7 @@ resource "digitalocean_database_firewall" "saleor_db_firewall" {
   }
 }
 
-resource "digitalocean_spaces_bucket" "saleor_medias" {
+resource "digitalocean_spaces_bucket" "our-saleor-media" {
   name   = var.space_name
   region = var.region
 }
@@ -76,4 +76,5 @@ resource "digitalocean_record" "www" {
   type   = "A"
   name   = "@"
   value  = digitalocean_droplet.saleor.ipv4_address
+  ttl    = 1800
 }
