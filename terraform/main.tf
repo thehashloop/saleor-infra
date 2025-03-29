@@ -1,11 +1,13 @@
 terraform {
   backend "s3" {
-    endpoint                    = "https://blr1.digitaloceanspaces.com"
+    endpoints                   = { s3 = "https://blr1.digitaloceanspaces.com" }
     bucket                      = "our-terraform-state"
     key                         = "terraform.tfstate"
     region                      = "us-east-1"  # Required but ignored for DigitalOcean
     skip_credentials_validation = true
     skip_metadata_api_check     = true
+    skip_region_validation      = true
+    use_path_style              = true         # Needed for non-AWS S3 implementations
   }
   
   required_providers {
